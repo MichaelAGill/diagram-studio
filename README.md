@@ -4,7 +4,7 @@ Diagram Studio turns a short topic or specification into a compact explanation, 
 
 ## Quick start
 
-Requirements: Node.js 20 or newer and an OpenAI API key.
+Requirements: Node.js 22 or newer, an installed Chrome, Chromium, Edge, or Firefox browser, and an OpenAI API key.
 
 ```sh
 npm install
@@ -56,7 +56,9 @@ If no API key is configured, the CLI explains how to configure it and exits with
 
 ## Renderer and quota fallback
 
-The primary renderer is a local Excalidraw scene exporter. It does not call Excalidraw's hosted AI service, consume its AI quota, or open the editor. The Excalidraw AI adapter is optional and configured with `DIAGRAM_STUDIO_EXCALIDRAW_AI_URL`; it receives `POST {"diagram": <spec>}` and may return `{ "diagram": <updated spec> }`. HTTP 429 means the adapter quota is exhausted, so generation silently switches to Mermaid source and reports the fallback renderer in its output metadata. The local renderer works without that adapter or a paid Excalidraw plan. Mermaid fallback can also be selected with `--renderer mermaid`; Mermaid.ink renders the diagram source to SVG, which is saved directly or converted to PNG. Only the minimum Mermaid source is sent to that renderer, and no API key is sent. The endpoint can be self-hosted by replacing it in `renderMermaidSvg`.
+PNG scenes are rendered locally by the official `@excalidraw/cli` package. It needs an installed Chrome, Chromium, Edge, or Firefox browser; it does not need an Excalidraw account or API key. SVG output uses Diagram Studio's local SVG exporter. Neither path calls Excalidraw AI or consumes its AI quota.
+
+An optional generic adapter can be configured with `DIAGRAM_STUDIO_EXCALIDRAW_AI_URL`. It receives `POST {"diagram": <spec>}` and may return `{ "diagram": <updated spec> }`. A 429 response switches `--renderer auto` to Mermaid and is recorded in the output metadata. This is an adapter contract only: no supported headless Excalidraw AI provider or quota error contract has been verified or wired in, so configuring this environment variable alone does not connect to Excalidraw AI. Mermaid fallback can also be selected with `--renderer mermaid`; Mermaid.ink renders the diagram source to SVG, which is saved directly or converted to PNG. Only the Mermaid source is sent to that renderer, and no API key is sent.
 
 All five diagram types map to node and relationship semantics in the saved source. Layout is intentionally overview-first, with a restrained color palette and compact labels. A lightweight quality check verifies required content and edges, visible label sizes, and successful image rendering. Treat model output as a draft and retry with more detail if the check reports omissions or ambiguity.
 
