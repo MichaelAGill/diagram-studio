@@ -4,11 +4,13 @@ import path from 'node:path';
 import process from 'node:process';
 import { deflateSync } from 'node:zlib';
 import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 
 const TYPES = ['flowchart', 'sequence', 'class', 'state', 'er'];
 const COLORS = ['#8B5CF6', '#F97316', '#06B6D4', '#EC4899', '#22C55E', '#EAB308'];
 const WIDTH = 1200;
 const HEIGHT = 850;
+const PROJECT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function usage() {
   console.log(`Diagram Studio — headless diagram generation
@@ -284,7 +286,7 @@ async function main() {
     const svg = renderer === 'mermaid' ? await renderMermaidSvg(mermaid) : svgFor(spec, placed);
     const issues = qualityCheck(spec, placed, svg);
     if (issues.length) throw new Error(`Quality check failed: ${issues.join(' ')}`);
-    const directory = options.projectArtifacts || options.output || path.join('outputs', slug(spec.title));
+    const directory = options.projectArtifacts || options.output || path.join(PROJECT_DIR, 'outputs', slug(spec.title));
     await fs.mkdir(directory, { recursive: true });
     const base = slug(spec.title);
     const imagePath = path.resolve(directory, `${base}.${options.format}`);
@@ -300,6 +302,7 @@ async function main() {
     console.log(JSON.stringify(metadata, null, 2));
     if (spec.uncertainty) console.log(`Uncertainty: ${spec.uncertainty}`);
     if (spec.sources.length) console.log(`Sources: ${spec.sources.join(' · ')}`);
+    console.log('Add details and run again for a more specific diagram.');
     if (options.preview) console.log(`\n![${esc(spec.title)}](data:image/${options.format === 'svg' ? 'svg+xml' : 'png'};base64,${(await fs.readFile(imagePath)).toString('base64')})`);
   } catch (error) {
     console.error(error.message || String(error)); process.exitCode = 1;

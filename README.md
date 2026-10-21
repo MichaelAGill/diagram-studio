@@ -19,7 +19,7 @@ $env:OPENAI_API_KEY = "..."
 npx diagram-studio generate "How an HTTP request reaches a web server" --type flowchart
 ```
 
-The default output directory is `outputs/<slug>/`. Each run saves a PNG preview and editable `.excalidraw` source. The CLI prints a concise explanation, quality notes, file paths, and (when a terminal preview is supported) the preview as a data URL. Set `--no-preview` for documentation-only workflows. Use `--format svg` to also save SVG instead of PNG.
+The default output directory is Diagram Studio's `outputs/<slug>/`, independent of the caller's current directory. Each run saves a PNG preview and editable `.excalidraw` source. The CLI prints a concise explanation, quality notes, file paths, a retry invitation, and the preview as a data URL. Set `--no-preview` for documentation-only workflows. Use `--format svg` to save SVG instead of PNG.
 
 To place artifacts in another project's generated-artifacts directory, use `--project-artifacts PATH`. Generated outputs are never committed or published automatically.
 
@@ -56,7 +56,7 @@ If no API key is configured, the CLI explains how to configure it and exits with
 
 ## Renderer and quota fallback
 
-The primary renderer is a local Excalidraw scene exporter. It does not call Excalidraw's hosted AI service, consume its AI quota, or open the editor. If a configured Excalidraw-compatible AI adapter returns an explicit HTTP 429 quota/rate-limit response, generation silently switches to Mermaid source and reports the fallback renderer in its output metadata. The core local renderer remains usable without that adapter or a paid Excalidraw plan. Mermaid fallback is selected with `--renderer mermaid`; Mermaid.ink renders the diagram source to SVG, which is saved directly or converted to PNG. Only the minimum Mermaid source is sent to that renderer, and no API key is sent. The endpoint can be self-hosted by replacing it in `renderMermaidSvg`.
+The primary renderer is a local Excalidraw scene exporter. It does not call Excalidraw's hosted AI service, consume its AI quota, or open the editor. The Excalidraw AI adapter is optional and configured with `DIAGRAM_STUDIO_EXCALIDRAW_AI_URL`; it receives `POST {"diagram": <spec>}` and may return `{ "diagram": <updated spec> }`. HTTP 429 means the adapter quota is exhausted, so generation silently switches to Mermaid source and reports the fallback renderer in its output metadata. The local renderer works without that adapter or a paid Excalidraw plan. Mermaid fallback can also be selected with `--renderer mermaid`; Mermaid.ink renders the diagram source to SVG, which is saved directly or converted to PNG. Only the minimum Mermaid source is sent to that renderer, and no API key is sent. The endpoint can be self-hosted by replacing it in `renderMermaidSvg`.
 
 All five diagram types map to node and relationship semantics in the saved source. Layout is intentionally overview-first, with a restrained color palette and compact labels. A lightweight quality check verifies required content and edges, visible label sizes, and successful image rendering. Treat model output as a draft and retry with more detail if the check reports omissions or ambiguity.
 
