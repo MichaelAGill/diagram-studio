@@ -5,12 +5,15 @@ import process from 'node:process';
 import { deflateSync } from 'node:zlib';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 
 const TYPES = ['flowchart', 'sequence', 'class', 'state', 'er'];
 const COLORS = ['#8B5CF6', '#F97316', '#06B6D4', '#EC4899', '#22C55E', '#EAB308'];
 const WIDTH = 1200;
 const HEIGHT = 850;
 const PROJECT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const require = createRequire(import.meta.url);
 
 function usage() {
   console.log(`Diagram Studio — headless diagram generation
@@ -236,6 +239,23 @@ async function saveImage(svg, imagePath, format) {
   await sharp(Buffer.from(svg)).png().toFile(imagePath);
 }
 
+async function renderExcalidrawPng(sourcePath, imagePath) {
+  let cliPackage;
+  try { cliPackage = require.resolve('@excalidraw/cli/package.json'); }
+  catch { throw new Error('PNG rendering of Excalidraw scenes needs @excalidraw/cli. Run npm install, then retry.'); }
+  const cliPath = path.join(path.dirname(cliPackage), 'dist', 'main.js');
+  await new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [cliPath, 'render', sourcePath, '--out', imagePath], { stdio: ['ignore', 'ignore', 'pipe'] });
+    let stderr = '';
+    child.stderr.setEncoding('utf8');
+    child.stderr.on('data', chunk => { stderr += chunk; });
+    child.once('error', reject);
+    child.once('close', code => code === 0 ? resolve() : reject(new Error(`Excalidraw PNG renderer failed${stderr.trim() ? `: ${stderr.trim().slice(0, 500)}` : ` (exit ${code})`}.`)));
+  });
+  const image = await fs.stat(imagePath).catch(() => null);
+  if (!image || image.size === 0) throw new Error('Excalidraw PNG renderer did not create a usable image.');
+}
+
 async function applyConfiguredExcalidrawAdapter(spec) {
   const endpoint = process.env.DIAGRAM_STUDIO_EXCALIDRAW_AI_URL;
   if (!endpoint) return { mode: 'local' };
@@ -283,8 +303,9 @@ async function main() {
     }
     const placed = layout(spec);
     const mermaid = renderer === 'mermaid' ? toMermaid(spec) : '';
-    const svg = renderer === 'mermaid' ? await renderMermaidSvg(mermaid) : svgFor(spec, placed);
-    const issues = qualityCheck(spec, placed, svg);
+    const svg = renderer === 'mermaid' || options.format === 'svg' ? (renderer === 'mermaid' ? await renderMermaidSvg(mermaid) : svgFor(spec, placed)) : null;
+    const qualitySvg = svg || svgFor(spec, placed);
+    const issues = qualityCheck(spec, placed, qualitySvg);
     if (issues.length) throw new Error(`Quality check failed: ${issues.join(' ')}`);
     const directory = options.projectArtifacts || options.output || path.join(PROJECT_DIR, 'outputs', slug(spec.title));
     await fs.mkdir(directory, { recursive: true });
@@ -293,9 +314,10 @@ async function main() {
     const sourcePath = path.resolve(directory, `${base}.${renderer === 'excalidraw' ? 'excalidraw' : 'mmd'}`);
     if (renderer === 'excalidraw') await fs.writeFile(sourcePath, `${JSON.stringify(toExcalidraw(spec, placed), null, 2)}\n`);
     else await fs.writeFile(sourcePath, `${mermaid}\n`);
-    await saveImage(svg, imagePath, options.format);
+    if (renderer === 'excalidraw' && options.format === 'png') await renderExcalidrawPng(sourcePath, imagePath);
+    else await saveImage(svg, imagePath, options.format);
     const metadata = {
-      type: spec.type, renderer: renderer === 'mermaid' ? 'mermaid-fallback' : 'excalidraw-local', adapter: adapterMode,
+      type: spec.type, renderer: renderer === 'mermaid' ? 'mermaid-fallback' : (options.format === 'png' ? 'excalidraw-cli-local' : 'excalidraw-svg-local'), adapter: adapterMode,
       explanation: spec.explanation, sources: spec.sources, uncertainty: spec.uncertainty,
       source: sourcePath, image: imagePath, quality: issues.length ? 'needs-review' : 'passed'
     };
