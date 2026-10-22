@@ -67,7 +67,7 @@ diagram-studio generate --spec outputs/request-lifecycle/request-lifecycle.diagr
   --renderer mermaid --format png --output outputs/request-lifecycle
 ```
 
-If Excalidraw PNG rendering fails, Diagram Studio keeps the generated `.diagram.json` specification and `.excalidraw` source and prints a retry command using that same specification with `--renderer mermaid`. This retry is explicit; the CLI does not detect AI quota exhaustion or switch renderers automatically. Mermaid.ink renders the Mermaid source to SVG, which is saved directly or converted to PNG. Only the Mermaid source is sent to that renderer, and no API key is sent.
+If Excalidraw PNG rendering fails, Diagram Studio keeps the generated `.diagram.json` specification and `.excalidraw` source and prints a retry command using that same specification with `--renderer mermaid`. This retry is explicit; the CLI does not detect AI quota exhaustion or switch renderers automatically. Mermaid.ink renders the Mermaid source to SVG when SVG is requested and PNG when PNG is requested. Only the diagram source is sent to that renderer, and no API key is sent.
 
 All five diagram types map to node and relationship semantics in the saved source. Layout is intentionally overview-first, with a restrained color palette and compact labels. A lightweight quality check verifies required content and edges, visible label sizes, and successful image rendering. Treat model output as a draft and retry with more detail if the check reports omissions or ambiguity.
 
