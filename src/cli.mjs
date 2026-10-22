@@ -262,17 +262,36 @@ function toMermaid(spec) {
   return lines.join('\n');
 }
 
-async function renderMermaidSvg(source) {
+function encodeMermaidState(source) {
   // Mermaid.ink consumes the Mermaid Live Editor's pako-serialized state, not
   // raw source. Keep the state minimal and use the editor's documented defaults.
   const state = JSON.stringify({ code: source, mermaid: '{}', grid: true, panZoom: true, rough: false, updateDiagram: true });
-  const packed = deflateSync(Buffer.from(state, 'utf8'), { level: 9 }).toString('base64url');
+  return deflateSync(Buffer.from(state, 'utf8'), { level: 9 }).toString('base64url');
+}
+
+async function renderMermaidSvg(source) {
+  const packed = encodeMermaidState(source);
   const url = `https://mermaid.ink/svg/pako:${packed}?bgColor=F5F3FF`;
   const response = await fetch(url, { signal: AbortSignal.timeout(45000) });
   if (!response.ok) throw new Error(`Mermaid renderer failed (${response.status}).`);
   const svg = await response.text();
   if (!svg.includes('<svg') || !svg.includes('</svg>')) throw new Error('Mermaid renderer returned an invalid SVG.');
   return svg;
+}
+
+async function renderMermaidPng(source, imagePath) {
+  const packed = encodeMermaidState(source);
+  const url = `https://mermaid.ink/img/pako:${packed}?type=png&bgColor=F5F3FF`;
+  const response = await fetch(url, { signal: AbortSignal.timeout(45000) });
+  if (!response.ok) throw new Error(`Mermaid PNG renderer failed (${response.status}).`);
+  const png = Buffer.from(await response.arrayBuffer());
+  let sharp;
+  try { ({ default: sharp } = await import('sharp')); }
+  catch { throw new Error('PNG validation needs project dependencies. Run npm install, then retry.'); }
+  const imageInfo = await sharp(png).metadata();
+  if (imageInfo.format !== 'png' || !imageInfo.width || !imageInfo.height) throw new Error('Mermaid renderer did not return a valid PNG image.');
+  await fs.writeFile(imagePath, png);
+  return { width: imageInfo.width, height: imageInfo.height };
 }
 
 async function saveImage(svg, imagePath, format) {
@@ -352,7 +371,8 @@ async function main() {
       catch (error) {
         throw new Error(`${error.message || String(error)}\nThe generated specification is saved at ${specPath}. Retry explicitly with --spec "${specPath}" --renderer mermaid --format ${options.format} --output "${directory}".`);
       }
-    } else await saveImage(qualitySvg, imagePath, options.format);
+    } else if (renderer === 'mermaid' && options.format === 'png') imageInfo = await renderMermaidPng(mermaid, imagePath);
+    else await saveImage(qualitySvg, imagePath, options.format);
     const metadata = {
       type: spec.type, renderer, rendering: renderer === 'excalidraw' && options.format === 'png' ? 'excalidraw-cli-local' : renderer === 'excalidraw' ? 'diagram-studio-svg-local' : 'mermaid-ink',
       explanation: spec.explanation, sources: spec.sources, uncertainty: spec.uncertainty,
