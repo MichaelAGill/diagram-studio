@@ -19,7 +19,7 @@ $env:OPENAI_API_KEY = "..."
 npx diagram-studio generate "How an HTTP request reaches a web server" --type flowchart
 ```
 
-The default output directory is Diagram Studio's `outputs/<slug>/`, independent of the caller's current directory. Each run saves a PNG preview and editable `.excalidraw` source. The CLI prints a concise explanation, quality notes, file paths, a retry invitation, and the preview as a data URL. Set `--no-preview` for documentation-only workflows. Use `--format svg` to save SVG instead of PNG.
+The default output directory is Diagram Studio's `outputs/<slug>/`, independent of the caller's current directory. Each successful run saves a PNG preview, editable renderer source, and a machine-readable `.diagram.json` specification. The CLI prints a concise explanation, quality notes, file paths, a retry invitation, and the preview as a data URL. Set `--no-preview` for documentation-only workflows. Use `--format svg` to save SVG instead of PNG.
 
 To place artifacts in another project's generated-artifacts directory, use `--project-artifacts PATH`. Generated outputs are never committed or published automatically.
 
@@ -27,7 +27,8 @@ To place artifacts in another project's generated-artifacts directory, use `--pr
 
 ```text
 diagram-studio generate <prompt> [--type flowchart|sequence|class|state|er]
-  [--format png|svg] [--output PATH] [--project-artifacts PATH]
+  [--renderer auto|excalidraw|mermaid] [--format png|svg]
+  [--output PATH] [--project-artifacts PATH]
   [--no-preview] [--model MODEL]
 ```
 
@@ -38,6 +39,7 @@ If no API key is configured, the CLI explains how to configure it and exits with
 ```json
 {
   "type": "flowchart",
+  "renderer": "excalidraw",
   "title": "Request lifecycle",
   "explanation": "A request passes through validation before the service handles it.",
   "nodes": [
@@ -54,11 +56,18 @@ If no API key is configured, the CLI explains how to configure it and exits with
 }
 ```
 
-## Renderer and quota fallback
+## Renderer selection and retry
 
-PNG scenes are rendered locally by the official `@excalidraw/cli` package. It needs an installed Chrome, Chromium, Edge, or Firefox browser; it does not need an Excalidraw account or API key. SVG output uses Diagram Studio's local SVG exporter. Neither path calls Excalidraw AI or consumes its AI quota.
+The worker specification can set `renderer` to `excalidraw` or `mermaid`. `--renderer` overrides that field; `auto` (the default) uses the specification and defaults to Excalidraw. Excalidraw scenes are rendered headlessly by the official `@excalidraw/cli` package with an installed Chrome, Chromium, Edge, or Firefox browser. Local rendering needs no Excalidraw account or API key and does not call Excalidraw AI or use its quota. SVG output uses Diagram Studio's local SVG exporter. Generation never opens the interactive editor.
 
-An optional generic adapter can be configured with `DIAGRAM_STUDIO_EXCALIDRAW_AI_URL`. It receives `POST {"diagram": <spec>}` and may return `{ "diagram": <updated spec> }`. A 429 response switches `--renderer auto` to Mermaid and is recorded in the output metadata. This is an adapter contract only: no supported headless Excalidraw AI provider or quota error contract has been verified or wired in, so configuring this environment variable alone does not connect to Excalidraw AI. Mermaid fallback can also be selected with `--renderer mermaid`; Mermaid.ink renders the diagram source to SVG, which is saved directly or converted to PNG. Only the Mermaid source is sent to that renderer, and no API key is sent.
+For a deliberate Mermaid retry, reuse the saved specification:
+
+```sh
+diagram-studio generate --spec outputs/request-lifecycle/request-lifecycle.diagram.json \
+  --renderer mermaid --format png --output outputs/request-lifecycle
+```
+
+If Excalidraw PNG rendering fails, Diagram Studio keeps the generated `.diagram.json` specification and `.excalidraw` source and prints a retry command using that same specification with `--renderer mermaid`. This retry is explicit; the CLI does not detect AI quota exhaustion or switch renderers automatically. Mermaid.ink renders the Mermaid source to SVG, which is saved directly or converted to PNG. Only the Mermaid source is sent to that renderer, and no API key is sent.
 
 All five diagram types map to node and relationship semantics in the saved source. Layout is intentionally overview-first, with a restrained color palette and compact labels. A lightweight quality check verifies required content and edges, visible label sizes, and successful image rendering. Treat model output as a draft and retry with more detail if the check reports omissions or ambiguity.
 
