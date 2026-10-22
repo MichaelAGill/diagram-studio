@@ -19,7 +19,7 @@ npx diagram-studio render --source request.mmd --title "Request lifecycle" `
   --explanation "A client request passes through the edge and application service."
 ```
 
-The default output directory is Diagram Studio's `outputs/<slug>/`, independent of the caller's current directory. Each successful run saves a PNG preview, editable renderer source, and a machine-readable `.diagram.json` specification. The CLI prints a concise explanation, quality notes, file paths, a retry invitation, and the preview as a data URL. Set `--no-preview` for documentation-only workflows. Use `--format svg` to save SVG instead of PNG.
+The default output directory is Diagram Studio's `outputs/<slug>/`, independent of the caller's current directory. Each successful run saves a PNG preview, editable renderer source, and a machine-readable `.diagram.json` specification. The CLI prints a concise explanation, quality notes, file paths, a retry invitation, and the preview as a data URL. Set `--no-preview` for documentation-only workflows. Use `--format svg` to save SVG instead.
 
 To place artifacts in another project's generated-artifacts directory, use `--project-artifacts PATH`. Generated outputs are never committed or published automatically.
 
@@ -41,7 +41,7 @@ Example spec:
   "type": "flowchart",
   "title": "Request lifecycle",
   "explanation": "A request passes through validation before the service handles it.",
-  "mermaid": "flowchart LR\n  Client[Client] -->|request| Service[Service]",
+  "mermaid": "flowchart LR\\n  Client[Client] -->|request| Service[Service]",
   "sources": [],
   "uncertainty": ""
 }
@@ -64,9 +64,25 @@ The quality check verifies the declared type, detects diagram entities and relat
 
 Call the CLI from any project worker when a diagram would clarify a workflow, architecture, or change. Diagrams are optional. Have the worker pass only the minimum relevant Mermaid source and explanation, and point `--project-artifacts` at the requesting project's artifact directory. Do not pass whole conversations, secrets, or unrelated code.
 
+## Codex MCP integration
+
+The local MCP server exposes a `render_diagram` tool. It takes caller-generated Mermaid, runs Diagram Studio, saves editable source and an image under `outputs/`, and returns the image preview by default. It does not make model calls or send conversation history to the renderer.
+
+Add this to the user-level Codex `config.toml` (replace the Node executable path with the one installed on your machine):
+
+```toml
+[mcp_servers.diagram_studio]
+command = 'C:\\path\\to\\node.exe'
+args = ['C:\\workspace\\diagram-studio\\src\\mcp-server.mjs']
+startup_timeout_sec = 30
+```
+
+Restart Codex to load the tool. This local server is available to local Codex chats on this machine. Cloud chats require a hosted MCP endpoint.
+
 ## Development
 
 ```sh
 npm install
 npm run start -- render --help
+npm run mcp
 ```
