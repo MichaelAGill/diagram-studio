@@ -1,11 +1,10 @@
 {
   "name": "diagram-studio",
   "version": "1.0.0",
-  "description": "Headless, picture-led diagram generation for projects and pull requests.",
+  "description": "Headless rendering for caller-supplied Mermaid diagrams.",
   "type": "module",
   "bin": { "diagram-studio": "./src/cli.mjs" },
   "scripts": { "start": "node src/cli.mjs" },
   "engines": { "node": ">=22" },
-  "dependencies": { "@excalidraw/cli": "^0.2.0", "sharp": "^0.34.0" }
+  "dependencies": {}
 }
-
