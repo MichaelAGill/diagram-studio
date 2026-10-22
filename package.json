@@ -4,7 +4,10 @@
   "description": "Headless rendering for caller-supplied Mermaid diagrams.",
   "type": "module",
   "bin": { "diagram-studio": "./src/cli.mjs" },
-  "scripts": { "start": "node src/cli.mjs" },
+  "scripts": {
+    "start": "node src/cli.mjs",
+    "mcp": "node src/mcp-server.mjs"
+  },
   "engines": { "node": ">=22" },
   "dependencies": {}
 }
