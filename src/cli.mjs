@@ -257,13 +257,16 @@ function toMermaid(spec) {
   if (!['sequence', 'class', 'state'].includes(spec.type) && spec.type !== 'er') for (const node of spec.nodes) lines.push(`  ${idMap.get(node.id)}["${label(node.label)}"]`);
   if (spec.type === 'sequence') for (const e of spec.edges) lines.push(`  ${idMap.get(e.from)}->>${idMap.get(e.to)}: ${label(e.label || 'interacts')}`);
   else if (spec.type === 'state') for (const e of spec.edges) lines.push(`  ${idMap.get(e.from)} --> ${idMap.get(e.to)}${e.label ? ` : ${label(e.label)}` : ''}`);
+  else if (spec.type === 'flowchart') for (const e of spec.edges) lines.push(`  ${idMap.get(e.from)} -->${e.label ? `|${label(e.label).replaceAll('|', '/') }|` : ''} ${idMap.get(e.to)}`);
   else for (const e of spec.edges) lines.push(`  ${idMap.get(e.from)} ${spec.type === 'er' ? '||--o{' : '-->'} ${idMap.get(e.to)}${e.label ? ` : ${label(e.label)}` : ''}`);
   return lines.join('\n');
 }
 
 async function renderMermaidSvg(source) {
-  // Mermaid.ink accepts Mermaid Live's pako: URL format. Only the diagram source is sent.
-  const packed = deflateSync(Buffer.from(source, 'utf8')).toString('base64url');
+  // Mermaid.ink consumes the Mermaid Live Editor's pako-serialized state, not
+  // raw source. Keep the state minimal and use the editor's documented defaults.
+  const state = JSON.stringify({ code: source, mermaid: '{}', grid: true, panZoom: true, rough: false, updateDiagram: true });
+  const packed = deflateSync(Buffer.from(state, 'utf8'), { level: 9 }).toString('base64url');
   const url = `https://mermaid.ink/svg/pako:${packed}?bgColor=F5F3FF`;
   const response = await fetch(url, { signal: AbortSignal.timeout(45000) });
   if (!response.ok) throw new Error(`Mermaid renderer failed (${response.status}).`);
