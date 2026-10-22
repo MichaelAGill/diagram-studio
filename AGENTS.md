@@ -9,7 +9,7 @@
 - Check every generated diagram for render success, useful coverage, and readable labels.
 
 ## Delivery
-- The user has standing approval to deliver requested Diagram Studio changes directly to `main, always`; do not ask for this approval again. Do not create a pull request or require PR review for this repository.
+- The user always authorizes requested Diagram Studio code changes to be delivered directly to `main`; never ask for approval again. Do not create a pull request or require PR review for this repository.
 - Preserve remote history; never force-push. Respect existing auto-deployment but report deployment only when a configured pipeline confirms it.
 - Do not automatically commit or publish generated diagram outputs.
 
